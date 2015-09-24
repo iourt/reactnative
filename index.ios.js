@@ -6,80 +6,96 @@
 
 var React = require('react-native');
 var {
-	AppRegistry,
-	StyleSheet,
-  	Text,
-  	View,
+    AppRegistry,
+    StyleSheet,
+    Text,
+    View,
     Image,
     ListView,
+    WebView,
+    TouchableOpacity,
+    TextInput,
 } = React;
 
-var REQUEST_URL = 'api/getHomeArticle';
+var HEADER = '#3b5998';
+var BGWASH = 'rgba(255,255,255,0.8)';
+var DISABLED_WASH = 'rgba(255,255,255,0.25)';
 
-var ajaxConfig = {
-    method: 'POST',
-    headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Origin': '',
-    },
-    body: JSON.stringify({
-        'PageIndex': 1,
-        'PageSize': 10
-    }),
-};
+var TEXT_INPUT_REF = 'urlInput';
+var WEBVIEW_REF = 'webview';
 
 var reactnative = React.createClass({
 
     getInitialState: function () {
         return {
-            dataSource: new ListView.DataSource({
-                rowHasChanged: (row1, row2) => row1 !== row2,
-            }),
-            loaded: false
+            url: 'http://m.163.com',
+            status: 'No Page Loaded',
+            backButtonEnabled: false,
+            forwardButtonEnabled: false,
+            loading: true,
+            scalesPageToFit: true,
         };
     },
 
-    componentDidMount: function () {
-        this.fetchData();
-    },
+    inputText: '',
 
-    fetchData: function () {
-        fetch(REQUEST_URL, ajaxConfig)
-            .then((response) => response.json())
-            .then((responseData) => {
-                this.setState({
-                    dataSource: this.state.dataSource.cloneWithRows(responseData.ArticleList),
-                    loaded: true
-                });
-            })
-            .done();
+    handleTextInputChange: function(event) {
+        this.inputText = event.nativeEvent.text;
     },
 
     render: function () {
 
-        if (!this.state.loaded) {
-            return this.renderLoadingView();
-        }
-
         // var res = this.state.datas[0];
 
         return (
-            <ListView
-                dataSource={this.state.dataSource}
-                renderRow={this.renderView}
-                style={styles.listView} />
+            <View style={[styles.container]}>
+                <View style={[styles.addressBarRow]}>
+                	<TouchableOpacity
+                	    onPress={this.goBack}
+                	    style={this.state.backButtonEnabled ? styles.navButton : styles.disabledButton}>
+                	    <Text>{'<'}</Text>
+                	</TouchableOpacity>
+                	<TouchableOpacity
+                	    onPress={this.goForward}
+                	    style={this.state.forwardButtonEnabled ? styles.navButton : styles.disabledButton}>
+                	    <Text>{'>'}</Text>
+                	</TouchableOpacity>
+          			<TextInput
+            			ref={TEXT_INPUT_REF}
+            			autoCapitalize="none"
+            			defaultValue={this.state.url}
+            			onSubmitEditing={this.onSubmitEditing}
+            			onChange={this.handleTextInputChange}
+            			clearButtonMode="while-editing"
+            			style={styles.addressBarTextInput} />
+          			<TouchableOpacity onPress={this.pressGoButton}>
+            			<View style={styles.goButton}>
+              				<Text>Go!</Text>
+            			</View>
+          			</TouchableOpacity>
+        		</View>
+                <WebView
+                    ref={WEBVIEW_REF}
+                    automaticallyAdjustContentInsets={false}
+                    style={styles.webView}
+                    url={this.state.url}
+                    onNavigationStateChange={this.onNavigationStateChange}
+                    startInLoadingState={true}
+                    scalesPageToFit={this.state.scalesPageToFit} />
+            </View>
         );
     },
 
-    renderLoadingView: function () {
-        return (
-            <View style={styles.container}>
-                <Text>
-                    Loading ...
-                </Text>
-            </View>
-        );
+    goBack: function() {
+        this.refs[WEBVIEW_REF].goBack();
+    },
+
+    goForward: function() {
+        this.refs[WEBVIEW_REF].goForward();
+    },
+
+    reload: function() {
+        this.refs[WEBVIEW_REF].reload();
     },
 
     renderView: function (res) {
@@ -92,45 +108,95 @@ var reactnative = React.createClass({
             </View>
         );
     },
+
+    onSubmitEditing: function(event) {
+        this.pressGoButton();
+    },
+
+    pressGoButton: function() {
+        var url = this.inputText.toLowerCase();
+        
+        if (url === this.state.url) {
+            this.reload();
+        } else {
+            this.setState({
+                url: url,
+            });
+        }
+        // dismiss keyoard
+        this.refs[TEXT_INPUT_REF].blur();
+    },
 });
 
 var styles = StyleSheet.create({
-  	container: {
-  	  	flex: 1,
-        flexDirection: 'row',
-  	  	justifyContent: 'center',
-  	  	alignItems: 'center',
-  	  	backgroundColor: '#FFF',
-        padding: 10,
-        borderBottomWidth: 1,
-        borderColor: '#EEE',
-        borderStyle: 'solid',
-  	},
-    ListView: {
-        paddingTop: 20,
-        backgroundColor: '#F00',
-    },
-  	instructions: {
-  	  	textAlign: 'center',
-  	  	color: '#333333',
-  	  	marginBottom: 5,
-  	},
-    image: {
-        // flex: 1,
-        width: 100,
-        height: 100,
-        marginRight: 10
-    },
-    rightContainer: {
+    container: {
         flex: 1,
-        // lineClamp: 3,
-        // flexWrap: 'wrap',
-        height: 100,
-        // boxOrient: 'vertical',
-        overflow: 'hidden',
+        backgroundColor: HEADER,
+        paddingTop: 20,
     },
-    text: {
-        // lineHeight: 30,
+    addressBarRow: {
+        flexDirection: 'row',
+        padding: 8,
+    },
+    webView: {
+        backgroundColor: BGWASH,
+        height: 10,
+    },
+    addressBarTextInput: {
+        backgroundColor: BGWASH,
+        borderColor: 'transparent',
+        borderRadius: 3,
+        borderWidth: 1,
+        height: 24,
+        paddingLeft: 10,
+        paddingTop: 3,
+        paddingBottom: 3,
+        flex: 1,
+        fontSize: 14,
+    },
+    navButton: {
+        width: 20,
+        padding: 3,
+        marginRight: 3,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: BGWASH,
+        borderColor: 'transparent',
+        borderRadius: 3,
+    },
+    disabledButton: {
+        width: 20,
+        padding: 3,
+        marginRight: 3,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: DISABLED_WASH,
+        borderColor: 'transparent',
+        borderRadius: 3,
+    },
+    goButton: {
+        height: 24,
+        padding: 3,
+        marginLeft: 8,
+        alignItems: 'center',
+        backgroundColor: BGWASH,
+        borderColor: 'transparent',
+        borderRadius: 3,
+        alignSelf: 'stretch',
+    },
+    statusBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingLeft: 5,
+        height: 22,
+    },
+    statusBarText: {
+        color: 'white',
+        fontSize: 13,
+    },
+    spinner: {
+        width: 20,
+        marginRight: 6,
     },
 });
 
